@@ -38,13 +38,6 @@ namespace MyTGBot
         /// <returns></returns>
         public static async Task Parsing(string[] urls)
         {
-            /*
-            var urls = new string[] { "https://ru.pinterest.com/alinkafr20/%D1%81%D0%BC%D0%B5%D1%88%D0%BD%D1%8B%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/lengavriuck/meme/", "https://ru.pinterest.com/armyprishvina/%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/karamelllca223/%D0%BC%D0%B5%D0%BC%D1%8B/" }; //общая тематика
-            var urls1 = new string[] { "https://ru.pinterest.com/Alek_Ext/%D0%BC%D0%B5%D0%BC%D1%8B-%D1%81-%D0%B2%D0%BE%D0%BB%D0%BA%D0%B0%D0%BC%D0%B8/", "https://ru.pinterest.com/vladick2007/%D0%B2%D0%BE%D0%BB%D0%BA%D0%B8/" }; //мемы с волками
-            var urls2 = new string[] { "https://ru.pinterest.com/ane4kaklimova7/%D0%BA%D0%BE%D1%88%D0%B0%D1%87%D1%8C%D0%B8-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/WhateverCouldItMean/%D0%BC%D0%B5%D0%BC%D1%8B-%D1%81-%D0%BA%D0%BE%D1%82%D0%B0%D0%BC%D0%B8/", }; //мемы с котами
-            var urls3 = new string[] { "https://ru.pinterest.com/kostpotapow5/%D1%87%D1%91%D1%80%D0%BD%D1%8B%D0%B9-%D1%8E%D0%BC%D0%BE%D1%80/", "https://ru.pinterest.com/iceescp/%D1%87%D0%B5%D1%80%D0%BD%D1%8B%D0%B9-%D1%8E%D0%BC%D0%BE%D1%80/" }; //чёрный юмор
-            var urls4 = new string[] { "https://ru.pinterest.com/lnmyaso/%D0%B8%D0%B8%D1%81%D1%83%D1%81/", "https://ru.pinterest.com/nyatinamari/%D1%85%D1%80%D0%B8%D1%81%D1%82%D0%B8%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/polinahergiani413/%D1%85%D1%80%D0%B8%D1%81%D1%82%D0%B8%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/" }; //христианские мемы (не для религиозных)
-            */
 
             var config = Configuration.Default.WithDefaultLoader();
             using var context = BrowsingContext.New(config);
@@ -57,10 +50,20 @@ namespace MyTGBot
                     using var doc = await context.OpenAsync(url);
                     var mems = doc.Images.Select(el => el.GetAttribute("src"));
 
-                    using (var sr = new StreamWriter(new FileStream("AllMems.txt", FileMode.OpenOrCreate)))
+                    string oldCount;
+                    using (var sr = new StreamReader(new FileStream("AllMems.txt", FileMode.OpenOrCreate)))
                     {
+                        oldCount = sr.ReadLine();
+                    }
+                    //Подсчёт кол-ва мемов и добавление их в начало файла
+                    using (var sw = new StreamWriter(new FileStream("AllMems.txt", FileMode.OpenOrCreate)))
+                    {
+                        var count = mems.Count();
+                        sw.BaseStream.Seek(0, SeekOrigin.Begin);
+                        await sw.WriteLineAsync((oldCount == null)? count.ToString(): (count + int.Parse(oldCount)).ToString());
+
                         foreach (var mem in mems)
-                            sr.WriteLine(mem);
+                            await sw.WriteLineAsync(mem);
                     }
                 }
         }
@@ -144,7 +147,7 @@ namespace MyTGBot
                     {
                             var callbackQuery = update.CallbackQuery; //информация о кнопке
                             var chat = callbackQuery.Message.Chat; //информация о чате
-                                                                   // Action act = await botClient.AnswerCallbackQueryAsync(callbackQuery.Id); не работает
+                                                                   
                             var call = callbackQuery.Data;
 
                             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
@@ -152,7 +155,7 @@ namespace MyTGBot
                             if (call.Equals("button1")) // Вопрос теста 1: Коты
                             {
                                 var inline = CreateInline("ДА!", "НЕТ!", "button2:Yes", "button2:No");
-                        
+
                                 await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri("https://cs12.pikabu.ru/post_img/big/2022/04/11/12/1649708608135887396.jpg"), caption: "Нравятся ли тебе мемы с котами? (Признавайся, они всем нравятся)", replyMarkup: inline);
                             }
                             else if (call.StartsWith("button2")) //Вопрос теста 2: Иисус
@@ -169,7 +172,7 @@ namespace MyTGBot
                             }
                             else if (call.StartsWith("button3")) //Вопрос теста 3: Чёрный юмор
                             {
-                                var urls = new string[] { "https://ru.pinterest.com/kostpotapow5/%D1%87%D1%91%D1%80%D0%BD%D1%8B%D0%B9-%D1%8E%D0%BC%D0%BE%D1%80/", "https://ru.pinterest.com/iceescp/%D1%87%D0%B5%D1%80%D0%BD%D1%8B%D0%B9-%D1%8E%D0%BC%D0%BE%D1%80/" }; //чёрный юмор
+                                var urls = new string[] { "https://ru.pinterest.com/lnmyaso/%D0%B8%D0%B8%D1%81%D1%83%D1%81/", "https://ru.pinterest.com/nyatinamari/%D1%85%D1%80%D0%B8%D1%81%D1%82%D0%B8%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/polinahergiani413/%D1%85%D1%80%D0%B8%D1%81%D1%82%D0%B8%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/" }; //христианские мемы (не для религиозных)
 
                                 var inline = CreateInline("Yesss", "Нет ^~^", "button4:Yes", "button4:No");
 
@@ -191,7 +194,7 @@ namespace MyTGBot
                             }
                             else if (call.StartsWith("button5")) //Вопрос теста 5: Общая тематика
                             {
-                                var urls = new string[] { "https://ru.pinterest.com/alinkafr20/%D1%81%D0%BC%D0%B5%D1%88%D0%BD%D1%8B%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/lengavriuck/meme/", "https://ru.pinterest.com/armyprishvina/%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/karamelllca223/%D0%BC%D0%B5%D0%BC%D1%8B/" }; //общая тематика
+                                var urls = new string[] { "https://ru.pinterest.com/Alek_Ext/%D0%BC%D0%B5%D0%BC%D1%8B-%D1%81-%D0%B2%D0%BE%D0%BB%D0%BA%D0%B0%D0%BC%D0%B8/", "https://ru.pinterest.com/vladick2007/%D0%B2%D0%BE%D0%BB%D0%BA%D0%B8/" }; //мемы с волками
 
                                 var inline = CreateInline("ХОЧУ!", "Не интересно `^`", "button6:Yes", "button6:No");
 
@@ -199,10 +202,38 @@ namespace MyTGBot
                                     "мемы с животными, мемы про политику (осуждаю), исторические мемы, мемы с постами из твитера, классические мемы, старые мемы, новые мемы, русские мемы и иностранные мемы - мемы на любой вкус и цвет.\n" +
                                     "Ты же не откажишься от того, что человечесто накапливало десятилетиями?", replyMarkup: inline);
 
-                                if (call.Equals("button6:Yes"))
+                                if (call.Equals("button5:Yes"))
                                     Parsing(urls);
                             }
+                            else if (call.StartsWith("button6")) //Переход к отправке мемов
+                            {
+                                var urls = new string[] { "https://ru.pinterest.com/alinkafr20/%D1%81%D0%BC%D0%B5%D1%88%D0%BD%D1%8B%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/lengavriuck/meme/", "https://ru.pinterest.com/armyprishvina/%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/karamelllca223/%D0%BC%D0%B5%D0%BC%D1%8B/" }; //общая тематика
 
+                                var inline = new InlineKeyboardMarkup(new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Хочу мем!") });
+
+                                if (call.Equals("button6:Yes"))
+                                    Parsing(urls);
+                                
+                                //Добавить проверку на то, что хотябы на один вопрос теста был ответ 'да' (Наличие файла AllMems.txt). Если все нет - предложить уйти или пройти тест заново
+                                //if ()
+                                    await botClient.SendTextMessageAsync(chat.Id, "Вот и всё! Тест пройден, неправильных ответов в нем нет. Теперь я смогу слать тебе только те мемы, которые тебе нравиться. Начнём?", replyMarkup: inline);
+                            }
+                            else //Отправка мемов
+                            {
+                                var inline = new InlineKeyboardMarkup(new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Хочу ещё мем!") });
+
+                                string mem;
+                                using (var sr = new StreamReader(new FileStream("AllMems.txt", FileMode.Open)))
+                                {
+                                    Random r = new Random();
+                                    var len = int.Parse(sr.ReadLine()); //Кол-во мемов, записанное в первой строке
+
+                                    sr.BaseStream.Seek(r.Next(1, len), SeekOrigin.Begin);
+                                    mem = sr.ReadLine();
+                                }
+
+                                await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri(mem), replyMarkup: inline);
+                            }
 
 
                             break;
@@ -210,7 +241,7 @@ namespace MyTGBot
                 }
             }
             catch (Exception ex) 
-            { Console.WriteLine(ex.Message); }
+            { Console.WriteLine(ex); }
         }
     }
 
