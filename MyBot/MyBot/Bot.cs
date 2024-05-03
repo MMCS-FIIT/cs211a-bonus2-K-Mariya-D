@@ -18,13 +18,20 @@ namespace MyBot
     /// </summary>
     class Bot
     {
-        private Dictionary<long, List<string>> users; //хранит списки с мемами отдельноо для каждого пользователя
+        private Dictionary<long, List<string>> users; //хранит списки с мемами отдельно для каждого пользователя
         public TelegramBotClient BotClient { get; }
         public CancellationTokenSource Cts { get; }
         public ReceiverOptions ReceiverOptions { get; }
 
+        /// <summary>
+        /// Конструктор класса
+        /// </summary>
+        /// <param name="BotClient"></param>
+        /// <param name="Cts"></param>
+        /// <param name="receiverOptions"></param>
         public Bot(TelegramBotClient BotClient, CancellationTokenSource Cts, ReceiverOptions receiverOptions)
         {
+            this.users = new Dictionary<long, List<string>>();
             this.BotClient = BotClient;
             this.Cts = Cts;
             this.ReceiverOptions = receiverOptions;
@@ -32,39 +39,29 @@ namespace MyBot
         public void Start() => BotClient.StartReceiving(updateHandler, ErrorHandler, ReceiverOptions, Cts.Token);
 
         /// <summary>
-        /// Парсит поданные сайты и записывает все найденные ссылки на картинки в файл AllMems.txt
+        /// Парсит поданные сайты и записывает все найденные ссылки в словарь 
         /// </summary>
         /// <param name="urls"></param>
         /// <returns></returns>
-        private async Task Parsing(string[] urls)
+        private async Task Parsing(string[] urls, long key)
         {
             var config = Configuration.Default.WithDefaultLoader();
             using var context = BrowsingContext.New(config);
 
             var docs = new List<Task<IDocument>>();
-
+            
             //Получение кода всех страниц 
             foreach (var url in urls)
             {
                 using var doc = await context.OpenAsync(url);
                 var mems = doc.Images.Select(el => el.GetAttribute("src"));
 
-                string oldCount;
-                using (var sr = new StreamReader(new FileStream("AllMems.txt", FileMode.OpenOrCreate)))
-                {
-                    oldCount = sr.ReadLine();
-                }
-                //Подсчёт кол-ва мемов и добавление их в начало файла
-                using (var sw = new StreamWriter(new FileStream("AllMems.txt", FileMode.OpenOrCreate)))
-                {
-                    var count = mems.Count();
-                    sw.BaseStream.Seek(0, SeekOrigin.Begin);
-                    await sw.WriteLineAsync((oldCount == null) ? count.ToString() : (count + int.Parse(oldCount)).ToString());
+                if (!users.ContainsKey(key))
+                    users.Add(key, mems.ToList());
+                else 
+                    users[key].AddRange(mems);
 
-                    foreach (var mem in mems)
-                        await sw.WriteLineAsync(mem);
-                }
-            }
+            }   
         }
         /// <summary>
         /// Создаёт инлайн клавиатуру с 2 кнопками
@@ -126,6 +123,7 @@ namespace MyBot
 
                                         if (message.Text.Equals(@"/start"))
                                         {
+                                            
                                             var inlineKeyboard = new InlineKeyboardMarkup(
                                                     InlineKeyboardButton.WithCallbackData("Пройти тест", "button1"));
 
@@ -165,7 +163,7 @@ namespace MyBot
                                             "\nМемоLove не несёт ответственности за испорченную карму и оскорбления чувств верующих)", replyMarkup: inline);
 
                                 if (call.Equals("button2:Yes"))
-                                    Parsing(urls);
+                                    Parsing(urls, chat.Id);
                             }
                             else if (call.StartsWith("button3")) //Вопрос теста 3: Чёрный юмор
                             {
@@ -176,7 +174,7 @@ namespace MyBot
                                 await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri("https://i.pinimg.com/564x/ef/e2/9f/efe29f7bbd804044ef45b20b9d4bb350.jpg"), caption: "Чёрный юмор, юмор для ценителей. Присоеденишься к этой братии?", replyMarkup: inline);
 
                                 if (call.Equals("button3:Yes"))
-                                    Parsing(urls);
+                                    Parsing(urls, chat.Id);
                             }
                             else if (call.StartsWith("button4")) //Вопрос теста 4: Волки
                             {
@@ -187,7 +185,7 @@ namespace MyBot
                                 await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRWKqv8tCEIlk1jThK_2ZQrbJQQDVFWSxx9aGipsOMuIg&s"), caption: "И следующий вопрос теста: Мемы с волками. Поймет не каждый, но тот, кто поймёт, тот поймёт. Что скажешь?", replyMarkup: inline);
 
                                 if (call.Equals("button4:Yes"))
-                                    Parsing(urls);
+                                    Parsing(urls, chat.Id);
                             }
                             else if (call.StartsWith("button5")) //Вопрос теста 5: Общая тематика
                             {
@@ -200,38 +198,35 @@ namespace MyBot
                                     "Ты же не откажишься от того, что человечесто накапливало десятилетиями?", replyMarkup: inline);
 
                                 if (call.Equals("button5:Yes"))
-                                    Parsing(urls);
+                                    Parsing(urls, chat.Id);
                             }
                             else if (call.StartsWith("button6")) //Переход к отправке мемов
                             {
                                 var urls = new string[] { "https://ru.pinterest.com/alinkafr20/%D1%81%D0%BC%D0%B5%D1%88%D0%BD%D1%8B%D0%B5-%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/lengavriuck/meme/", "https://ru.pinterest.com/armyprishvina/%D0%BC%D0%B5%D0%BC%D1%8B/", "https://ru.pinterest.com/karamelllca223/%D0%BC%D0%B5%D0%BC%D1%8B/" }; //общая тематика
 
                                 var inline = new InlineKeyboardMarkup(new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Хочу мем!") });
+                                var inline1 = new InlineKeyboardMarkup(new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Хочу пройти тест заново!", "button1") });
 
                                 if (call.Equals("button6:Yes"))
-                                    Parsing(urls);
+                                    Parsing(urls, chat.Id);
 
-                                //Добавить проверку на то, что хотябы на один вопрос теста был ответ 'да' (Наличие файла AllMems.txt). Если все нет - предложить уйти или пройти тест заново
-                                //if ()
-                                await botClient.SendTextMessageAsync(chat.Id, "Вот и всё! Тест пройден, неправильных ответов в нем нет. Теперь я смогу слать тебе только те мемы, которые тебе нравиться. Начнём?", replyMarkup: inline);
+                                //Проверка, что хотя бы один раз в тесте пользователь нажал да
+                                if (users.ContainsKey(chat.Id))
+                                    await botClient.SendTextMessageAsync(chat.Id, "Вот и всё! Тест пройден, неправильных ответов в нем нет. Теперь я смогу слать тебе только те мемы, которые тебе нравиться. Начнём?", replyMarkup: inline);
+                                else
+                                    await botClient.SendTextMessageAsync(chat.Id, "МемоLove сожелеет, что не смог заинтересовать тебя не одной из предложенных категорий. Уверен, что не хочешь взглянуть на них еще раз?", replyMarkup: inline1);
                             }
                             else //Отправка мемов
                             {
                                 var inline = new InlineKeyboardMarkup(new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Хочу ещё мем!") });
 
-                                string mem;
-                                using (var sr = new StreamReader(new FileStream("AllMems.txt", FileMode.Open)))
-                                {
-                                    Random r = new Random();
-                                    var len = int.Parse(sr.ReadLine()); //Кол-во мемов, записанное в первой строке
+                                Random r = new Random();
+                                var len = users[chat.Id].Count();
 
-                                    sr.BaseStream.Seek(r.Next(1, len), SeekOrigin.Begin);
-                                    mem = sr.ReadLine();
-                                }
+                                string mem = users[chat.Id][r.Next(0, len - 1)];
 
                                 await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri(mem), replyMarkup: inline);
                             }
-
 
                             break;
                         }
