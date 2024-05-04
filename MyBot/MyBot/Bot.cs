@@ -50,7 +50,7 @@ namespace MyBot
 
             var docs = new List<Task<IDocument>>();
             
-            //Получение кода всех страниц 
+            //Получение кода всех страниц и запись ссылок в список
             foreach (var url in urls)
             {
                 using var doc = await context.OpenAsync(url);
@@ -60,7 +60,6 @@ namespace MyBot
                     users.Add(key, mems.ToList());
                 else 
                     users[key].AddRange(mems);
-
             }   
         }
         /// <summary>
@@ -114,26 +113,29 @@ namespace MyBot
 
                             var message = update.Message;
                             var ID = message.Chat.Id;
-
-                            switch (message.Type) //Обработка полученных сообщений
+   
+                            if ( message.Type.Equals(MessageType.Text) && message.Text.ToLower().Equals(@"/start"))
                             {
+                                if (users.ContainsKey(ID))
+                                    users[ID].Clear();
 
-                                case MessageType.Text:
-                                    {
+                                var inlineKeyboard = new InlineKeyboardMarkup(
+                                        InlineKeyboardButton.WithCallbackData("Пройти тест", "button1"));
 
-                                        if (message.Text.Equals(@"/start"))
-                                        {
-                                            
-                                            var inlineKeyboard = new InlineKeyboardMarkup(
-                                                    InlineKeyboardButton.WithCallbackData("Пройти тест", "button1"));
-
-                                            await botClient.SendTextMessageAsync(ID, "МемоLove приветствует тебя, заблудший сранник!\n\n" +
-                                                "Моё призвание - поиск годных мемов со всех уголков света.\n Я поделюсь с тобой результатами своего неустанного труда, но вначале ты должен помочь мне:\n\n" +
-                                                "Расскажи мне какие мемы тебе нравятся и я смогу подобрать для тебя подходящие:", replyMarkup: inlineKeyboard);
-                                        }
-
-                                        break;
-                                    }
+                                await botClient.SendTextMessageAsync(ID, "МемоLove приветствует тебя, заблудший сранник!\n\n" +
+                                    "Моё призвание - поиск годных мемов со всех уголков света.\n Я поделюсь с тобой результатами своего неустанного труда, но вначале ты должен помочь мне:\n\n" +
+                                    "Расскажи мне какие мемы тебе нравятся и я смогу подобрать для тебя подходящие:", replyMarkup: inlineKeyboard);
+                            }
+                            else //Ответ на случайное сообщение 
+                            {
+                                var difrentPhotos = new string[] { "https://a.d-cd.net/8abae02s-960.jpg",
+                                                "https://i.pinimg.com/736x/18/7c/0e/187c0edc4c62719e313b6e57d6fca48a.jpg",
+                                                "https://www.meme-arsenal.com/memes/e95300acce058bfa3ee18d8e41999ba2.jpg",
+                                                "https://i.pinimg.com/564x/8b/2a/34/8b2a34739089fe01481e098a4eb0d517.jpg",
+                                                "https://memchik.ru//images/memes/6048acaeb1c7e30db84acd75.jpg",
+                                                "https://memchik.ru//images/memes/5f874b60b1c7e36130153ce0.jpg"};
+                                Random r = new Random();
+                                await botClient.SendPhotoAsync(ID, InputFile.FromUri(difrentPhotos[r.Next(0, difrentPhotos.Length - 1)]), caption: "Даже не знаю, что на это сказать...");
                             }
 
                             break;
@@ -171,7 +173,7 @@ namespace MyBot
 
                                 var inline = CreateInline("Yesss", "Нет ^~^", "button4:Yes", "button4:No");
 
-                                await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri("https://i.pinimg.com/564x/ef/e2/9f/efe29f7bbd804044ef45b20b9d4bb350.jpg"), caption: "Чёрный юмор, юмор для ценителей. Присоеденишься к этой братии?", replyMarkup: inline);
+                                await botClient.SendPhotoAsync(chat.Id, InputFile.FromUri("https://i.pinimg.com/564x/ef/e2/9f/efe29f7bbd804044ef45b20b9d4bb350.jpg"), caption: "Чёрный(не толерантный) юмор, юмор для ценителей. Присоеденишься к этой братии?", replyMarkup: inline);
 
                                 if (call.Equals("button3:Yes"))
                                     Parsing(urls, chat.Id);
